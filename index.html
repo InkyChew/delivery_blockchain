@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+		<title>Food Deliver</title>
+		<link rel="stylesheet" href="style.css">
+    <script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script language="javascript" type="text/javascript" src="contractDelivery_abi.js"></script>
+  </head>
+  <body>
+    <div class="main">
+			<div class="">
+				<img src="">主角為餐廳</img>
+				<div>訂單資訊: 餐廳、食物...</div>
+				<div>消費者資訊: name...</div>
+				<button onclick="newOrder()">接單</button>
+				
+				<hr>
+				<div>
+					餐廳開始製作餐點，計時
+					<div id="cookTime"></div>
+					<button onclick="callDeliver()">餐點完成</button>
+				</div>
+				
+				<hr>
+				<div>
+					外送員開始取餐送餐，計時
+					<div id="deliverTime"></div>
+					<button onclick="callCustomer()">餐點抵達</button>
+				</div>
+			</div>
+
+			<div class="">
+				<div id="txStatus"></div>
+				<div id="ordersChain"></div>
+			</div>
+		</div>
+
+  	<script>
+    var contractDelivery;
+		var userAccount;
+		
+		var timer;
+		var orderTime, cookTime, deliverTime = "";
+		
+		function startApp() {
+			var contractDeliveryAddress = "YOUR_CONTRACT_ADDRESS";
+			contractDelivery = new web3js.eth.Contract(cryptoZombiesABI, contractDeliveryAddress);
+			var accountInterval = setInterval(function() {
+			  if (web3.eth.accounts[0] !== userAccount) {
+				userAccount = web3.eth.accounts[0];
+				// Call a function to update the UI with the new account
+				// getZombiesByOwner(userAccount)
+				// .then(displayZombies);
+			  }
+			}, 100);
+
+			// Start here
+		 }
+
+		function displayOrders(custId) {
+			$("#ordersChain").empty();
+			for (oId of custId) {
+				getOrderDetails(oId)
+				.then(function(order) {
+					$("#ordersChain").append(`<div class="order">
+						<ul>
+							<li>訂單成立時間: ${order.orderTime}</li>
+							<li>餐點製作時間: ${order.cookTime}</li>
+							<li>餐點運送時間: ${order.deliverTime}</li>
+						</ul>
+					</div>`);
+				});
+			}
+		}
+	  
+		function startTimer(eid) {
+			let sec = 0, min = 0;
+			timer = setInterval(() => {
+				sec++;
+				if(sec >= 60) {
+					sec = 0;
+					min++;
+				}
+				document.getElementById(eid).innerHTML = min + "分" + sec + "秒";
+			}, 1000);
+		}
+		
+		function newOrder() {
+			orderTime = new Date().toString().substring(0,24);
+			cookTime = "製作中..."
+			startTimer("cookTime"); // 計時製作時間
+			$("#txStatus").text("Creating new order on the blockchain. This may take a while...");
+			return contractDelivery.methods.createOrder(orderTime, cookTime, deliverTime)
+			.send({ from: userAccount })
+			.on("receipt", function(receipt) {
+				console.log(receipt);
+			  $("#txStatus").text("Successfully created order at" + orderTime);
+			  getOrdersByCustomer(userAccount).then(displayOrders);
+			})
+			.on("error", function(error) {
+			  $("#txStatus").text(error);
+			});
+		}
+		
+		function callDeliver() {
+			clearInterval(timer);
+			cookTime = document.getElementById("cookTime").innerHTML;
+			startTimer("deliverTime");
+			
+			$("#txStatus").text("Creating new order on the blockchain. This may take a while...");
+			return contractDelivery.methods.createOrder(orderTime, cookTime, deliverTime)
+			.send({ from: userAccount })
+			.on("receipt", function(receipt) {
+			  $("#txStatus").text("餐點完成時間為" + cookTime);
+			  getOrdersByCustomer(userAccount).then(displayOrders);
+			})
+			.on("error", function(error) {
+			  $("#txStatus").text(error);
+			});
+		}
+		
+		function callCustomer() {
+			clearInterval(timer);
+			deliverTime = document.getElementById("deliverTime").innerHTML;
+			
+			$("#txStatus").text("Creating new order on the blockchain. This may take a while...");
+			return contractDelivery.methods.createOrder(orderTime, cookTime, deliverTime)
+			.send({ from: userAccount })
+			.on("receipt", function(receipt) {
+			  $("#txStatus").text("餐點抵達時間為" + deliverTime);
+			  getOrdersByCustomer(userAccount).then(displayOrders);
+			})
+			.on("error", function(error) {
+			  $("#txStatus").text(error);
+			});
+		}
+		
+		function getOrdersByCustomer(cust) {
+			return contractDelivery.methods.getOrdersByCust(cust).call()
+		}
+
+		function getOrderDetails(oId) {
+			return contractDelivery.methods.orders(oId).call()
+		}
+		
+		window.addEventListener('load', function() {	
+			if (typeof web3 !== 'undefined') {
+			  web3js = new Web3(web3.currentProvider);
+				var contractDeliveryAddress = "0x352A8e542665431388bFB0C0AD58cD116cAd6230";
+				contractDelivery = new web3js.eth.Contract(contractDeliveryABI, contractDeliveryAddress);
+
+				web3js.eth.getAccounts().then(function(accounts){ userAccount = accounts[0] })
+			} else {
+			  alert("Please install Metamask on your browser first!");
+			}
+    })
+    </script>
+  </body>
+</html>
