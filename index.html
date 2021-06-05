@@ -10,7 +10,7 @@
   </head>
   <body>
     <div class="main">
-			<div class="">
+			<div class="section">
 				<img src="">主角為餐廳</img>
 				<div>訂單資訊: 餐廳、食物...</div>
 				<div>消費者資訊: name...</div>
@@ -22,6 +22,11 @@
 					<div id="cookTime"></div>
 					<button onclick="callDeliver()">餐點完成</button>
 				</div>
+
+				<!-- <div>
+					<div>外送員前往取餐...</div>					
+					<button onclick="callDeliver()">取餐完成</button>
+				</div> -->
 				
 				<hr>
 				<div>
@@ -31,8 +36,8 @@
 				</div>
 			</div>
 
-			<div class="">
-				<div id="txStatus"></div>
+			<div class="section">
+				<div id="txStatus">外送區塊鏈</div>
 				<div id="ordersChain"></div>
 			</div>
 		</div>
@@ -43,36 +48,16 @@
 		
 		var timer;
 		var orderTime, cookTime, deliverTime = "";
-		
-		function startApp() {
-			var contractDeliveryAddress = "YOUR_CONTRACT_ADDRESS";
-			contractDelivery = new web3js.eth.Contract(cryptoZombiesABI, contractDeliveryAddress);
-			var accountInterval = setInterval(function() {
-			  if (web3.eth.accounts[0] !== userAccount) {
-				userAccount = web3.eth.accounts[0];
-				// Call a function to update the UI with the new account
-				// getZombiesByOwner(userAccount)
-				// .then(displayZombies);
-			  }
-			}, 100);
 
-			// Start here
-		 }
-
-		function displayOrders(custId) {
-			$("#ordersChain").empty();
-			for (oId of custId) {
+		function displayOrders(oId) {
 				getOrderDetails(oId)
 				.then(function(order) {
 					$("#ordersChain").append(`<div class="order">
-						<ul>
-							<li>訂單成立時間: ${order.orderTime}</li>
-							<li>餐點製作時間: ${order.cookTime}</li>
-							<li>餐點運送時間: ${order.deliverTime}</li>
-						</ul>
+							<div>訂單成立時間: ${order.orderTime}</div>
+							<div>餐點製作時間: ${order.cookTime}</div>
+							<div>餐點運送時間: ${order.deliverTime}</div>
 					</div>`);
 				});
-			}
 		}
 	  
 		function startTimer(eid) {
@@ -96,8 +81,10 @@
 			.send({ from: userAccount })
 			.on("receipt", function(receipt) {
 				console.log(receipt);
-			  $("#txStatus").text("Successfully created order at" + orderTime);
-			  getOrdersByCustomer(userAccount).then(displayOrders);
+				$("#txStatus").text("成功建立區塊，紀錄新訂單");
+				getOrdersByCustomer(userAccount)
+				.then(oIds => Math.max(...oIds))
+				.then(displayOrders);
 			})
 			.on("error", function(error) {
 			  $("#txStatus").text(error);
@@ -113,8 +100,10 @@
 			return contractDelivery.methods.createOrder(orderTime, cookTime, deliverTime)
 			.send({ from: userAccount })
 			.on("receipt", function(receipt) {
-			  $("#txStatus").text("餐點完成時間為" + cookTime);
-			  getOrdersByCustomer(userAccount).then(displayOrders);
+				$("#txStatus").text("成功建立區塊，紀錄餐點製作時間");
+				getOrdersByCustomer(userAccount)
+				.then(oIds => Math.max(...oIds))
+				.then(displayOrders);
 			})
 			.on("error", function(error) {
 			  $("#txStatus").text(error);
@@ -129,8 +118,10 @@
 			return contractDelivery.methods.createOrder(orderTime, cookTime, deliverTime)
 			.send({ from: userAccount })
 			.on("receipt", function(receipt) {
-			  $("#txStatus").text("餐點抵達時間為" + deliverTime);
-			  getOrdersByCustomer(userAccount).then(displayOrders);
+				$("#txStatus").text("成功建立區塊，紀錄外送時間");
+				getOrdersByCustomer(userAccount)
+				.then(oIds => Math.max(...oIds))
+				.then(displayOrders);
 			})
 			.on("error", function(error) {
 			  $("#txStatus").text(error);
@@ -145,13 +136,25 @@
 			return contractDelivery.methods.orders(oId).call()
 		}
 		
+		function initBlockChain() {
+			console.log(userAccount);
+			$("#txStatus").text("Init the blockchain. This may take a while...");
+			getOrdersByCustomer(userAccount)
+			.then(function(oIds) {
+				for(oId of oIds)
+					displayOrders(oId);
+				$("#txStatus").text("成功建立區塊鏈");
+			})			
+		}
+		
 		window.addEventListener('load', function() {	
 			if (typeof web3 !== 'undefined') {
 			  web3js = new Web3(web3.currentProvider);
-				var contractDeliveryAddress = "0x352A8e542665431388bFB0C0AD58cD116cAd6230";
+				var contractDeliveryAddress = "0xFd81Dd1FF121D9582c6850f7B8C92B7E45E09aE8";
 				contractDelivery = new web3js.eth.Contract(contractDeliveryABI, contractDeliveryAddress);
 
 				web3js.eth.getAccounts().then(function(accounts){ userAccount = accounts[0] })
+				.then(initBlockChain);
 			} else {
 			  alert("Please install Metamask on your browser first!");
 			}

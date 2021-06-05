@@ -67,6 +67,19 @@ var contractDeliveryABI = [
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "getTheNewOrderId",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "uint256",
