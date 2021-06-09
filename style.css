@@ -8,17 +8,44 @@
   margin: 30px;
 }
 
-#txStatus {
+.msg {
   color: #059;
   font-size: 28px;
   font-weight: bold;
   padding: 10px;
-  border-radius: 3px;  
-  background-color: #BEF;
 }
 
 .order {
   border: 1px solid black;
   padding: 10px;
   margin-top: 10px;
+}
+
+#cook, #deliver, #customer {
+  visibility: hidden;
+}
+
+button {
+  font-size: 18px;
+  display: block;
+  margin-top: 10px;
+}
+
+#restaurant {
+  background-color: aliceblue;
+  padding-bottom: 50px;
+  padding: 20px;
+}
+
+#deliver {
+  background-color: lightyellow;
+  padding-bottom: 50px;
+  padding: 20px;
+  border-top: solid lightgray;
+  border-bottom: solid lightgray;
+}
+
+#customer {
+  background-color: beige;
+  padding: 20px;
 }

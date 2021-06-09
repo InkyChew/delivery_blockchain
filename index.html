@@ -11,33 +11,37 @@
   <body>
     <div class="main">
 			<div class="section">
-				<img src="">主角為餐廳</img>
-				<div>訂單資訊: 餐廳、食物...</div>
-				<div>消費者資訊: name...</div>
-				<button onclick="newOrder()">接單</button>
-				
-				<hr>
-				<div>
-					餐廳開始製作餐點，計時
-					<div id="cookTime"></div>
-					<button onclick="callDeliver()">餐點完成</button>
+				<div id="restaurant">
+					<div>
+						<img src="img/store.png"></img>
+						<button onclick="payFee()">接單</button>
+					</div>
+					<div id="payTxt" class="msg"></div>
+					
+					<hr>
+					<div id="cook">
+						餐廳開始製作餐點
+						<div id="cookTime"></div>
+						<button onclick="callDeliver()">餐點完成</button>
+					</div>
 				</div>
 
-				<!-- <div>
-					<div>外送員前往取餐...</div>					
-					<button onclick="callDeliver()">取餐完成</button>
-				</div> -->
-				
-				<hr>
-				<div>
-					外送員開始取餐送餐，計時
+				<div id="deliver">
+					<img src="img/delivery.png"></img>
+					<div>外送員開始取餐送餐</div>					
 					<div id="deliverTime"></div>
 					<button onclick="callCustomer()">餐點抵達</button>
+				</div>
+				
+				<div id="customer">
+					<div>外送區塊鏈平台將餐廳支付的外送費移轉給外送員</div>
+					<button onclick="closeOrder()">訂單完成</button>
+					<div id="transTxt" class="msg"></div>
 				</div>
 			</div>
 
 			<div class="section">
-				<div id="txStatus">外送區塊鏈</div>
+				<div id="txStatus" class="msg">外送區塊鏈</div>
 				<div id="ordersChain"></div>
 			</div>
 		</div>
@@ -52,7 +56,7 @@
 		function displayOrders(oId) {
 				getOrderDetails(oId)
 				.then(function(order) {
-					$("#ordersChain").append(`<div class="order">
+					$("#ordersChain").prepend(`<div class="order">
 							<div>訂單成立時間: ${order.orderTime}</div>
 							<div>餐點製作時間: ${order.cookTime}</div>
 							<div>餐點運送時間: ${order.deliverTime}</div>
@@ -72,15 +76,32 @@
 			}, 1000);
 		}
 		
+		function payFee() {
+			// 設定外送員錢包
+			let dAddress = "0x0ee34d8e4e1303f88a415bD7330BbDcfDC31A1f3";
+
+			$("#payTxt").text("Paying 0.0001 ether for delivery. This may take a while...");
+			return contractDelivery.methods.payDeliveryFee(dAddress)
+			.send({ from: userAccount, value: web3js.utils.toWei("0.0001","ether") })
+			.on("receipt", function(receipt) {
+				$("#payTxt").text("外送費付款成功");
+				newOrder();
+			})
+			.on("error", function(error) {
+			  $("#payTxt").text(error);
+			});
+		}
+
 		function newOrder() {
+			document.getElementById("cook").style.visibility = "visible";
+			startTimer("cookTime");
 			orderTime = new Date().toString().substring(0,24);
 			cookTime = "製作中..."
-			startTimer("cookTime"); // 計時製作時間
-			$("#txStatus").text("Creating new order on the blockchain. This may take a while...");
+
+			$("#txStatus").text("Creating new block on the blockchain. This may take a while...");
 			return contractDelivery.methods.createOrder(orderTime, cookTime, deliverTime)
 			.send({ from: userAccount })
 			.on("receipt", function(receipt) {
-				console.log(receipt);
 				$("#txStatus").text("成功建立區塊，紀錄新訂單");
 				getOrdersByCustomer(userAccount)
 				.then(oIds => Math.max(...oIds))
@@ -94,9 +115,11 @@
 		function callDeliver() {
 			clearInterval(timer);
 			cookTime = document.getElementById("cookTime").innerHTML;
+
+			document.getElementById("deliver").style.visibility = "visible";
 			startTimer("deliverTime");
 			
-			$("#txStatus").text("Creating new order on the blockchain. This may take a while...");
+			$("#txStatus").text("Creating new block on the blockchain. This may take a while...");
 			return contractDelivery.methods.createOrder(orderTime, cookTime, deliverTime)
 			.send({ from: userAccount })
 			.on("receipt", function(receipt) {
@@ -113,8 +136,8 @@
 		function callCustomer() {
 			clearInterval(timer);
 			deliverTime = document.getElementById("deliverTime").innerHTML;
-			
-			$("#txStatus").text("Creating new order on the blockchain. This may take a while...");
+
+			$("#txStatus").text("Creating new block on the blockchain. This may take a while...");
 			return contractDelivery.methods.createOrder(orderTime, cookTime, deliverTime)
 			.send({ from: userAccount })
 			.on("receipt", function(receipt) {
@@ -122,9 +145,23 @@
 				getOrdersByCustomer(userAccount)
 				.then(oIds => Math.max(...oIds))
 				.then(displayOrders);
+				document.getElementById("customer").style.visibility = "visible";
 			})
 			.on("error", function(error) {
 			  $("#txStatus").text(error);
+			});
+		}
+
+		function closeOrder() {
+			$("#transTxt").text("Transferring the delivery fee, 0.0001 ether. This may take a while...");
+
+			return contractDelivery.methods.transferToDelivery()
+			.send({ from: userAccount })
+			.on("receipt", function(receipt) {
+				$("#transTxt").text("訂單完成，外送費成功移轉給外送員");
+			})
+			.on("error", function(error) {
+			  $("#transTxt").text(error);
 			});
 		}
 		
@@ -132,16 +169,19 @@
 			return contractDelivery.methods.getOrdersByCust(cust).call()
 		}
 
+		function getOrderLength() {
+			return contractDelivery.methods.getOrderLength().call()
+		}
+
 		function getOrderDetails(oId) {
 			return contractDelivery.methods.orders(oId).call()
 		}
 		
 		function initBlockChain() {
-			console.log(userAccount);
 			$("#txStatus").text("Init the blockchain. This may take a while...");
-			getOrdersByCustomer(userAccount)
-			.then(function(oIds) {
-				for(oId of oIds)
+			getOrderLength()
+			.then(function(length) {
+				for(let oId = length-1; oId >= 0; oId--)
 					displayOrders(oId);
 				$("#txStatus").text("成功建立區塊鏈");
 			})			
@@ -150,7 +190,7 @@
 		window.addEventListener('load', function() {	
 			if (typeof web3 !== 'undefined') {
 			  web3js = new Web3(web3.currentProvider);
-				var contractDeliveryAddress = "0xFd81Dd1FF121D9582c6850f7B8C92B7E45E09aE8";
+				var contractDeliveryAddress = "0x591e42996835BFD021C91D160d0CdE72cFe12396";
 				contractDelivery = new web3js.eth.Contract(contractDeliveryABI, contractDeliveryAddress);
 
 				web3js.eth.getAccounts().then(function(accounts){ userAccount = accounts[0] })
@@ -158,7 +198,11 @@
 			} else {
 			  alert("Please install Metamask on your browser first!");
 			}
-    })
+		})
+		
+		window.ethereum.on('accountsChanged', function (accounts) {
+			userAccount = accounts[0];
+		})
     </script>
   </body>
 </html>

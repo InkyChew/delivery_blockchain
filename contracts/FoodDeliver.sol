@@ -3,6 +3,10 @@ pragma solidity >=0.7.0 <0.9.0;
 contract FoodDeliver {
     
     event NewOrder(string _oTime, string _cTime, string _dtime);
+    event showBalance(address owner, uint balance);
+
+    address private _dAddress;
+    uint private _deliveryFee = 0.0001 ether;
     
     struct Order {
        string orderTime;
@@ -15,8 +19,15 @@ contract FoodDeliver {
     mapping (uint => address) public orderToCustomer;
     mapping (address => uint) customerOrderCount;
     
-    function clearOrders() public {
-        delete orders;
+    function payDeliveryFee(address _dAd) external payable {
+        require(msg.value == _deliveryFee);
+        _dAddress = _dAd;
+    }
+    
+    function transferToDelivery() external {
+        address payable _delivery = payable(_dAddress);
+        _delivery.transfer(_deliveryFee);
+        emit showBalance(_dAddress, _dAddress.balance);
     }
 
     function createOrder(string memory _oTime, string memory _cTime, string memory _dtime) public {
@@ -24,6 +35,10 @@ contract FoodDeliver {
         orderToCustomer[orders.length-1] = msg.sender;
         customerOrderCount[msg.sender]++;
         emit NewOrder(_oTime, _cTime, _dtime);
+    }
+    
+    function getOrderLength() public view returns(uint) {
+        return orders.length;
     }
     
     function getOrdersByCust(address _cust) external view returns(uint[] memory) {
